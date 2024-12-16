@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget,
-    QMessageBox, QStackedWidget, QHBoxLayout, QScrollArea, QFrame, QGridLayout, QComboBox
+    QMessageBox, QStackedWidget, QHBoxLayout, QScrollArea, QFrame, QGridLayout, QComboBox, QInputDialog
 )
 from PyQt5.QtCore import Qt
 
@@ -13,13 +13,33 @@ class CoffeeShopApp(QMainWindow):
         self.order_window = None
         self.payment_window = None
         self.show_shop_func = None
+        self.inventory = {
+            "Water": 10,
+            "Espresso": 10,
+            "Cappuccino": 10,
+            "Latte": 10,
+            "Mocha": 10,
+            "Americano": 10,
+            "Macchiato": 10,
+            "Flat White": 10,
+            "Iced Coffee": 10,
+            "Hot Chocolate": 10,
+            "Chai Latte": 10,
+            "Green Tea": 10,
+            "Black Tea": 10,
+            "Herbal Tea": 10,
+            "Soda": 10,
+            "Lemonade": 10,
+            "Sparkling Water": 10
+        }
         self.initUI()
+        self.showFullScreen()
 
     def initUI(self):
         self.show_shop_func = self.show_shop
         layout = QVBoxLayout()
 
-        # Create a QLabel for the welcome message
+        # Create a label for the welcome message
         welcome_label = QLabel("Welcome to the Little Bear Coffee Shop")
         welcome_label.setAlignment(Qt.AlignCenter)
         welcome_label.setStyleSheet("font-size: 24px; font-weight: bold; font-family: Arial;")
@@ -29,39 +49,39 @@ class CoffeeShopApp(QMainWindow):
         shop_button = QPushButton("Shop")
         shop_button.setStyleSheet("""
             QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                 font-size: 14px;
             }
             QPushButton:hover {
-                background-color: rgb(205, 133, 63);
+                background-color: rgb(83, 116, 181);
                 color: black;
             }
         """)
         shop_button.clicked.connect(self.show_shop)
         layout.addWidget(shop_button)
 
-        #inventory button
+        # inventory button
         inventory_button = QPushButton("Inventory")
         inventory_button.setStyleSheet("""
             QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                  font-size: 14px;
             }
             QPushButton:hover {
-                background-color: rgb(205, 133, 63);
+                background-color: rgb(83, 116, 181);
                 color: black;
             }
         """)
         inventory_button.clicked.connect(self.show_inventory)
         layout.addWidget(inventory_button)
 
-        #order details button
+        # order details button
         order_button = QPushButton("Order Details")
         order_button.setStyleSheet("""
             QPushButton {
@@ -79,7 +99,7 @@ class CoffeeShopApp(QMainWindow):
         order_button.clicked.connect(self.show_order)
         layout.addWidget(order_button)
 
-        #exit button
+        # exit button
         exit_button = QPushButton("Exit")
         exit_button.setStyleSheet("""
             QPushButton {
@@ -97,36 +117,40 @@ class CoffeeShopApp(QMainWindow):
         exit_button.clicked.connect(self.close)
         layout.addWidget(exit_button)
 
-        # Set layout in a central widget
         container = QWidget()
         container.setLayout(layout)
 
-        # Stacked widget for different pages
         self.stacked_widget = QStackedWidget()
         self.stacked_widget.addWidget(container)
-        self.order_window = OrderWindow(self.stacked_widget, self.show_shop_func)
-        self.payment_window = PaymentWindow(self.stacked_widget, self.show_order, [])
+        self.order_window = OrderWindow(self.stacked_widget, self, self.show_shop_func)
+        self.payment_window = PaymentWindow(self.stacked_widget, self.show_order, [], self)
         self.stacked_widget.addWidget(self.order_window)
         self.stacked_widget.addWidget(self.payment_window)
-        # Set stacked widget as the central widget
+        self.order_index = self.stacked_widget.indexOf(self.order_window)
+        self.payment_index = self.stacked_widget.indexOf(self.payment_window)
         self.setCentralWidget(self.stacked_widget)
 
     def show_shop(self):
         if self.shop_window is None:
             self.shop_window = ShopWindow(self.stacked_widget, self, self.show_order)
             self.stacked_widget.addWidget(self.shop_window)
-        self.stacked_widget.setCurrentWidget(self.shop_window)
+        shop_index = self.stacked_widget.indexOf(self.shop_window)
+        self.stacked_widget.setCurrentIndex(shop_index)
 
     def show_inventory(self):
-        QMessageBox.information(self, "Inventory", "This will show inventory details.")
+        inventory_text = "Inventory:\n"
+        for drink, count in self.inventory.items():
+            inventory_text += f"{drink}: {count}\n"
+        QMessageBox.information(self, "Inventory", inventory_text)
 
     def show_order(self):
-        self.stacked_widget.setCurrentWidget(self.order_window)
+        self.stacked_widget.setCurrentIndex(self.order_index)
 
     def show_payment(self):
-        self.payment_window = PaymentWindow(self.stacked_widget, self.show_order, self.order_window.order)
-        self.stacked_widget.setCurrentWidget(self.payment_window)
-
+        # update the payment window
+        self.payment_window.order = self.order_window.order
+        self.payment_window.update_order_summary()
+        self.stacked_widget.setCurrentIndex(self.payment_index)
 
 class ShopWindow(QWidget):
     def __init__(self, stacked_widget, main_window, show_order_func):
@@ -136,12 +160,11 @@ class ShopWindow(QWidget):
         self.show_order_func = show_order_func
         self.setWindowTitle("Shop")
         self.initUI()
-        self.showFullScreen()
 
     def initUI(self):
         layout = QVBoxLayout()
 
-        # Title Label - Centered
+        # Title Label
         title_label = QLabel("Shop Menu")
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("font-size: 28px; font-weight: bold; font-family: Arial;")
@@ -195,10 +218,10 @@ class ShopWindow(QWidget):
         back_button.clicked.connect(self.back_to_main)
         layout.addWidget(back_button)
 
-        # Set layout
+     
         self.setLayout(layout)
 
-    #sets the drinks for the shop page
+    # Sets the drinks for the shop page
     def load_drinks(self, scroll_layout):
         self.drinks = {
             "Water": {"type": "Water", "price": 1.00, "options": ["Iced", "Warm"]},
@@ -220,7 +243,7 @@ class ShopWindow(QWidget):
             "Sparkling Water": {"type": "Water", "price": 1.50, "options": []}
         }
 
-        #title labels for the drinks
+        # Title labels for drinks
         col_labels = ["Water", "Coffee", "Tea", "Other"]
         col_positions = {label: i for i, label in enumerate(col_labels)}
         
@@ -278,25 +301,42 @@ class ShopWindow(QWidget):
 
     def add_to_order(self, drink_name, price, variation_combo):
         selected_variation = variation_combo.currentText() if variation_combo else ""
-        selected_drink = {"name": drink_name, "price": price, "variation": selected_variation}
-        self.main_window.order_window.add_order(selected_drink)
-        QMessageBox.information(self, "Order Added", f"{selected_drink['name']} ({selected_variation}) added to order.")
+        quantity, ok = QInputDialog.getInt(self, "Quantity", f"Enter quantity for {drink_name}:", 1, 1, 10)  # Default to 1, min 1 max 10
+        if ok:
+            selected_drink = {"name": drink_name, "price": price, "variation": selected_variation, "quantity": quantity}
+            self.main_window.order_window.add_order(selected_drink)
+            self.decrement_inventory(drink_name, quantity)
+            QMessageBox.information(self, "Order Added", f"{quantity} {selected_drink['name']}(s) ({selected_variation}) added to order.")
     
     def show_order(self):
       self.show_order_func()
+    
+    def decrement_inventory(self, product, quantity):
+        if self.main_window.inventory[product] >= quantity:
+            self.main_window.inventory[product] -= quantity
+        else:
+            QMessageBox.information(self, "Out of Stock", f"{product} is out of stock!")
 
-#class for the view order page
+# Class for the view order page
 class OrderWindow(QWidget):
-    def __init__(self, stacked_widget, show_shop_func):
+    def __init__(self, stacked_widget, main_window, show_shop_func):
         super().__init__()
         self.stacked_widget = stacked_widget
         self.show_shop_func = show_shop_func
+        self.main_window = main_window  
         self.setWindowTitle("Order Details")
         self.initUI()
-        self.showFullScreen()
-        self.order = []  # Use a list to store orders
+        self.order = []  # Stores orders
 
     def add_order(self, drink):
+         # Check if the item is already in the order
+        for item in self.order:
+            if item["name"] == drink["name"] and item["variation"] == drink["variation"]:
+                item["quantity"] += drink["quantity"]  # Increment the quantity
+                self.update_order_display()
+                return
+
+        # Put in order
         self.order.append(drink)
         self.update_order_display()
 
@@ -309,12 +349,12 @@ class OrderWindow(QWidget):
         title_label.setStyleSheet("font-size: 28px; font-weight: bold; font-family: Arial;")
         layout.addWidget(title_label)
         
-        # Styled background for the order list
+        # Background for the order list
         order_frame = QFrame()
         order_frame.setStyleSheet("background-color: rgba(255, 255, 255, 0.1); border-radius: 5px;")
         order_layout = QVBoxLayout(order_frame)
 
-        # Placeholder for order details
+        # Order Details
         self.order_details = QLabel("No orders placed yet.")
         self.order_details.setAlignment(Qt.AlignLeft)
         self.order_details.setStyleSheet("font-size: 16px; font-family: Arial;")
@@ -334,14 +374,14 @@ class OrderWindow(QWidget):
         payment_button = QPushButton("Payment")
         payment_button.setStyleSheet("""
            QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                 font-size: 14px;
             }
             QPushButton:hover {
-                background-color: rgb(205, 133, 63);
+                background-color: rgb(83, 116, 181);
                 color: black;
             }
         """)
@@ -352,14 +392,14 @@ class OrderWindow(QWidget):
         back_to_shop_button = QPushButton("Back to Shop")
         back_to_shop_button.setStyleSheet("""
             QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                 font-size: 14px;
             }
             QPushButton:hover {
-                background-color: rgb(205, 133, 63);
+                background-color: rgb(83, 116, 181);
                 color: black;
             }
         """)
@@ -370,14 +410,14 @@ class OrderWindow(QWidget):
         back_button = QPushButton("Back")
         back_button.setStyleSheet("""
             QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                 font-size: 14px;
             }
             QPushButton:hover {
-                background-color: rgb(205, 133, 63);
+                background-color: rgb(83, 116, 181);
                 color: black;
             }
         """)
@@ -393,11 +433,12 @@ class OrderWindow(QWidget):
             order_text = ""
             total = 0
             for item in self.order:
+                item_total = item['price'] * item['quantity']
                 order_text += f"- <span style='font-weight: bold;'>{item['name']}</span>"
                 if item["variation"]:
                     order_text += f" ({item['variation']})"
-                order_text += f' <span style="float: right;">${item["price"]:.2f}</span><br>'
-                total += item['price']
+                order_text += f' x {item["quantity"]} <span style="float: right;">${item_total:.2f}</span><br>'
+                total += item_total
                 
             self.order_details.setText(f"<div style='padding: 10px;'>{order_text}</div>")
             self.order_total_label.setText(f"Total: ${total:.2f}")
@@ -415,17 +456,16 @@ class OrderWindow(QWidget):
     def back_to_main(self):
         self.stacked_widget.setCurrentIndex(0)
 
-#payment page, cant get this to work at the moment
+#payment page
 class PaymentWindow(QWidget):
-    def __init__(self, stacked_widget, show_order_func, order):
+    def __init__(self, stacked_widget, show_order_func, order, main_window):
         super().__init__()
         self.stacked_widget = stacked_widget
         self.show_order_func = show_order_func
+        self.main_window = main_window
         self.setWindowTitle("Payment")
         self.order = order
         self.initUI()
-        self.showFullScreen()
-
 
     def initUI(self):
        layout = QVBoxLayout()
@@ -451,36 +491,36 @@ class PaymentWindow(QWidget):
        cash_button = QPushButton("Cash")
        cash_button.setStyleSheet("""
            QPushButton {
-              background-color: rgb(139, 69, 19);
+              background-color: rgb(55, 77, 120);
               color: white;
               border: 1px solid black;
               height: 40px;
               font-size: 14px;
            }
            QPushButton:hover {
-              background-color: rgb(205, 133, 63);
+              background-color: rgb(83, 116, 181);
               color: black;
             }
        """)
-       cash_button.clicked.connect(self.payment_successful)
+       cash_button.clicked.connect(self.complete_payment)
        payment_options_layout.addWidget(cash_button)
 
 
        card_button = QPushButton("Credit Card")
        card_button.setStyleSheet("""
             QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                 font-size: 14px;
             }
             QPushButton:hover {
-               background-color: rgb(205, 133, 63);
+               background-color: rgb(83, 116, 181);
                color: black;
             }
        """)
-       card_button.clicked.connect(self.payment_successful)
+       card_button.clicked.connect(self.complete_payment)
        payment_options_layout.addWidget(card_button)
        
        layout.addLayout(payment_options_layout)
@@ -489,19 +529,37 @@ class PaymentWindow(QWidget):
        back_button = QPushButton("Back to Order")
        back_button.setStyleSheet("""
             QPushButton {
-                background-color: rgb(139, 69, 19);
+                background-color: rgb(55, 77, 120);
                 color: white;
                 border: 1px solid black;
                 height: 40px;
                 font-size: 14px;
             }
             QPushButton:hover {
-               background-color: rgb(205, 133, 63);
+               background-color: rgb(83, 116, 181);
                color: black;
             }
        """)
        back_button.clicked.connect(self.back_to_order)
        layout.addWidget(back_button)
+       
+       # Back to shop button
+       back_to_shop_button = QPushButton("Back to Shop")
+       back_to_shop_button.setStyleSheet("""
+            QPushButton {
+                background-color: rgb(55, 77, 120);
+                color: white;
+                border: 1px solid black;
+                height: 40px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+               background-color: rgb(83, 116, 181);
+               color: black;
+            }
+       """)
+       back_to_shop_button.clicked.connect(self.show_shop)
+       layout.addWidget(back_to_shop_button)
 
 
        self.setLayout(layout)
@@ -511,33 +569,49 @@ class PaymentWindow(QWidget):
             order_text = ""
             total = 0
             for item in self.order:
+                item_total = item['price'] * item['quantity']
                 order_text += f"- <span style='font-weight: bold;'>{item['name']}</span>"
                 if item["variation"]:
                    order_text += f" ({item['variation']})"
-                order_text += f' <span style="float: right;">${item["price"]:.2f}</span><br>'
-                total += item['price']
+                order_text += f' x {item["quantity"]} <span style="float: right;">${item_total:.2f}</span><br>'
+                total += item_total
                 
             self.order_summary.setText(f'<div style="padding: 10px;">{order_text} <hr> Total: <span style="float: right;">${total:.2f}</span></div>')
         else:
            self.order_summary.setText("No orders placed yet.")
 
     def back_to_order(self):
-       self.show_order_func()
-
-    def payment_successful(self):
+       self.main_window.show_order()
+    
+    def show_shop(self):
+        self.main_window.show_shop()
+    
+    def complete_payment(self):
        QMessageBox.information(self, "Payment Successful", "Payment was successful")
-       self.order.clear()
-       self.update_order_summary()
-       self.show_order_func()
-
-
-# Run the Application
+       # Clear the order 
+       self.main_window.order_window.order.clear() 
+       self.main_window.order_window.update_order_display() 
+       self.main_window.show_order()
+       
+# Run the app
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet("""
         QWidget {
             background-color: #EBEEF7; /* Makes whole app background white */
         }
+
+        QPushButton {
+                background-color: rgb(55, 77, 120);
+                color: white;
+                border: 1px solid black;
+                height: 40px;
+                 font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: rgb(83, 116, 181);
+                color: black;
+            }
     """)
     main_window = CoffeeShopApp()
     main_window.show()
